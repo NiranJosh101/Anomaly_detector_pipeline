@@ -3,4 +3,8 @@ numpy
 seaborn
 matplotlib
 scikit-learn
+fastapi
+uvicorn
+python-multipart
+
 # -e .
