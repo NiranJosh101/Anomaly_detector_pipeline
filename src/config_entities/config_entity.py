@@ -26,11 +26,13 @@ class DataIngestionConfig:
         # Base directory for data ingestion
         self.data_ingestion_dir = os.path.abspath(training_pipeline_config.data_dir)
         self.timestamp = training_pipeline_config.timestamp
-        self.uploaded_dir = os.path.join(self.data_ingestion_dir, trainingpipeline.DATA_UPLOADED_DIR_NAME, self.timestamp)
+        self.uploaded_dir = os.path.join(self.data_ingestion_dir, trainingpipeline.DATA_UPLOADED_DIR_NAME)
         self.processed_dir = os.path.join(self.data_ingestion_dir, trainingpipeline.DATA_PROCESSED_DIR_NAME)
         self.completed_dir = os.path.join(self.processed_dir, trainingpipeline.DATA_PROCESS_COMPLETED_DIR_NAME)
         self.failed_dir = os.path.join(self.processed_dir, trainingpipeline.DATA_PROCESS_FAILED_DIR_NAME)
 
         self.uploaded_data_name = trainingpipeline.DATA_UPLOADED_NAME
         self.processed_data_name = trainingpipeline.DATA_PROCESSED_NAME
-        self.completed_data_name = trainingpipeline.DATA_PROCESS_COMPLETED_NAME
+        self.valid_dataset_name = trainingpipeline.DATA_PROCESS_COMPLETED_NAME
+        self.invalid_dataset_name = trainingpipeline.DATA_PROCESS_FAILED_DIR_NAME
+        self.invalid_csv_name = trainingpipeline.DATA_PROCESS_FAILED_NAME

@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, Request, UploadFile, File, HTTPException, BackgroundTasks
 from fastapi.responses import JSONResponse
 from datetime import datetime
 import os
@@ -10,6 +10,7 @@ from src.exception_setup.exception import AnomalyDetectionException
 from src.logging_setup import logger
 
 from src.config_entities.config_entity import TrainPipelineConfig, DataIngestionConfig
+from src.pipeline.training_pipeline import TrainingPipeline
 
 app = FastAPI()
 
@@ -27,11 +28,11 @@ async def root():
 
 
 @app.post("/upload")
-async def upload_file(file: UploadFile = File(...)):
+async def upload_file(request:Request, background_tasks: BackgroundTasks, file: UploadFile = File(...)):
     try:
         if not file.filename.endswith(".csv"):
             raise HTTPException(status_code=400, detail="Only CSV files are allowed.")
-        logger.logging.info("<--- File Upload Cancled --->")
+        
 
         train_config = TrainPipelineConfig(timestamp=datetime.now())
         data_ingestion_config = DataIngestionConfig(train_config)
@@ -42,6 +43,10 @@ async def upload_file(file: UploadFile = File(...)):
         destination_file_path = os.path.join(upload_path, data_ingestion_config.uploaded_data_name)
         with open(destination_file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
+
+        
+        train_pipeline = TrainingPipeline()
+        background_tasks.add_task(train_pipeline.run_pipeline)
 
         return JSONResponse(
             status_code=200,
