@@ -36,3 +36,32 @@ class DataIngestionConfig:
         self.valid_dataset_name = trainingpipeline.DATA_PROCESS_COMPLETED_NAME
         self.invalid_dataset_name = trainingpipeline.DATA_PROCESS_FAILED_DIR_NAME
         self.invalid_csv_name = trainingpipeline.DATA_PROCESS_FAILED_NAME
+
+
+
+
+class DataProcessingConfig:
+    def __init__(self, training_pipeline_config: TrainPipelineConfig):
+        self.data_processing_dir = os.path.join(training_pipeline_config.artifact_dir, trainingpipeline.DATA_PROCESSING_DIR_NAME)
+        self.validated_dir = os.path.join(self.data_processing_dir, trainingpipeline.DATA_PROCESSING_VALIDATED_DIR_NAME)
+        self.invalid_dir = os.path.join(self.data_processing_dir, trainingpipeline.DATA_PROCESSING_INVALID_DIR_NAME)
+        self.valid_x_train_name = trainingpipeline.DATA_PROCESSING_VALID_X_TRAIN_NAME
+        self.valid_y_train_name = trainingpipeline.DATA_PROCESSING_VALID_Y_TRAIN_NAME
+        self.valid_x_test_name = trainingpipeline.DATA_PROCESSING_VALID_X_TEST_NAME
+        self.valid_y_test_name = trainingpipeline.DATA_PROCESSING_VALID_Y_TEST_NAME
+        self.scaler_dir = os.path.join(self.data_processing_dir, trainingpipeline.DATA_PROCESSING_SCALER_DIR_NAME)
+        self.scaler_obj_name = trainingpipeline.DATA_PROCESSING_SCALER_OBJ_NAME
+        self.window_dir = os.path.join(self.data_processing_dir, trainingpipeline.DATA_PROCESSING_WINDOW_DIR_NAME)
+        self.window_config_name = trainingpipeline.DATA_PROCESSING_WINDOW_NAME
+        # self.window_size = trainingpipeline.WINDOW_SIZE
+        # self.window_step = trainingpipeline.WINDOW_STEP
+        # self.target_column = trainingpipeline.TARGET_COLUMN 
+        # self.feature_columns = trainingpipeline.FEATURE_COLUMNS
+        # self.train_split_ratio = trainingpipeline.TRAIN_SPLIT_RATIO
+        # self.test_split_ratio = trainingpipeline.TEST_SPLIT_RATIO
+        # self.scaling_strategy = trainingpipeline.SCALING_STRATEGY
+        # self.scaler_feature_range = trainingpipeline.SCALER_FEATURE_RANGE
+        # self.batch_size = trainingpipeline.BATCH_SIZE
+        # self.shuffle_train = trainingpipeline.SHUFFLE_TRAIN
+        # self.num_workers = trainingpipeline.NUM_WORKERS
+        # self.pin_memory = trainingpipeline.PIN_MEMORY
