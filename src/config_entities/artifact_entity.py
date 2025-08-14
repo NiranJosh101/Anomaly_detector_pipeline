@@ -13,7 +13,6 @@ class DataProcessingArtifact:
     y_train_path: str
     X_test_path: str
     y_test_path: str
-    scaler_path: str
-    window_config_path: str
+    preprocessor: str
 
     

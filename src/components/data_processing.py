@@ -14,7 +14,7 @@ from src.exception_setup.exception import AnomalyDetectionException
 from src.logging_setup import logger
 
 from src.config_entities.config_entity import DataProcessingConfig
-from src.config_entities.artifact_entity import DataIngestionArtifact
+from src.config_entities.artifact_entity import DataIngestionArtifact, DataProcessingArtifact
 
 from src.utils.common import detect_timestamp_column,save_object,save_numpy_array_data,load_object,load_numpy_array_data
 from src.utils.training_utils.train_utils import WindowingTransformer
@@ -97,7 +97,7 @@ class DataProcessing:
     
 
 
-    def resampling_df_freqencies(df: pd.DataFrame) -> pd.DataFrame:
+    def resampling_df_freqencies(self, df: pd.DataFrame) -> pd.DataFrame:
         """
         Detect timestamp column, check if data needs resampling,
         and resample to inferred frequency if irregular.
@@ -173,35 +173,58 @@ class DataProcessing:
                 raise AnomalyDetectionException(e, sys)
             
     
-    def fit_and_save_preprocessing_pipeline(self, train_df):
+    def fit_and_save_preprocessing_pipeline(self, df: pd.DataFrame) -> Pipeline:
+        """
+        Fit the preprocessing pipeline, keeping timestamps separate,
+        and save it for later inference.
+        """
         try:
-            categorical_cols = train_df.select_dtypes(include=["object", "category"]).columns.tolist()
-            numeric_cols = train_df.select_dtypes(include=["number"]).columns.tolist()
+            # 1. Identify column types
+            numeric_cols = df.select_dtypes(include=["number"]).columns.tolist()
+            categorical_cols = df.select_dtypes(include=["object", "category"]).columns.tolist()
+            datetime_cols = df.select_dtypes(include=["datetime64[ns]"]).columns.tolist()
 
+            if not datetime_cols:
+                raise ValueError("No datetime column found in dataset.")
+
+            timestamp_col = datetime_cols[0]  # assume first datetime col is timestamp
+            timestamp_index = df.columns.get_loc(timestamp_col)
+
+            # 2. Numeric & categorical preprocessing
             num_pipeline = Pipeline([
                 ("scaler", StandardScaler())
             ])
 
             cat_pipeline = Pipeline([
-                ("onehot", OneHotEncoder(handle_unknown="ignore", sparse_output=False))
+                 ("encoder", OneHotEncoder(handle_unknown="ignore", sparse_output=False))
             ])
 
+            # 3. ColumnTransformer: pass timestamps through without scaling/encoding
+            preprocessing = ColumnTransformer([
+                ("num", num_pipeline, numeric_cols),
+                ("cat", cat_pipeline, categorical_cols),
+                ("time", "passthrough", [timestamp_col])  # keep timestamps as-is
+            ], remainder="drop")
+
+            # 4. Full pipeline with windowing
             full_pipeline = Pipeline([
-                ("preprocessing", ColumnTransformer([
-                    ("num", num_pipeline, numeric_cols),
-                    ("cat", cat_pipeline, categorical_cols)
-                ], remainder="passthrough")),
-                
-                # Windowing AFTER preprocessing
-                ("windowing", WindowingTransformer(window_size=self.data_processing_config.window_size, step_size=self.data_processing_config.window_step))
+                ("preprocessing", preprocessing),
+                ("windowing", WindowingTransformer(
+                    window_size=self.data_processing_config.window_size,
+                    step_size=self.data_processing_config.window_step,
+                    timestamp_index=len(numeric_cols) + len(categorical_cols)  # timestamp last
+                ))
             ])
 
-            full_pipeline.fit(train_df)
+            # 5. Fit pipeline
+            full_pipeline.fit(df)
 
+            # 6. Save pipeline
             save_object(
-                file_path=os.path.join(self.data_processing_config.data_preprocessing_obj_path),
+                file_path=self.data_processing_config.preprocessing_object_path,
                 obj=full_pipeline
             )
+
             logger.logging.info(f"Preprocessing pipeline saved")
 
             return full_pipeline
@@ -209,17 +232,18 @@ class DataProcessing:
         except Exception as e:
             raise AnomalyDetectionException(e, sys)
 
-        
-        
+
+
+            
+            
     def transform_train_test(self, train_df, test_df):
         try:
-            
             pipeline_path = self.data_processing_config.data_preprocessing_obj_path
             preprocessor = load_object(pipeline_path)
 
-            
-            X_train = preprocessor.transform(train_df)
-            X_test = preprocessor.transform(test_df)
+            # Transform datasets (now returns both X and y)
+            X_train, y_train = preprocessor.transform(train_df)
+            X_test, y_test = preprocessor.transform(test_df)
 
             # Save transformed datasets
             save_numpy_array_data(
@@ -230,31 +254,47 @@ class DataProcessing:
                 file_path=self.data_processing_config.data_test_arr_dir,
                 array=X_test
             )
+            save_numpy_array_data(
+                file_path=self.data_processing_config.data_train_target_arr_dir,
+                array=y_train
+            )
+            save_numpy_array_data(
+                file_path=self.data_processing_config.data_test_target_arr_dir,
+                array=y_test
+            )
 
-            logger.logging.info("Train and test datasets transformed and saved.")
-            return X_train, X_test
+            logger.logging.info("Train and test datasets transformed (X & y) and saved.")
+            return X_train, y_train, X_test, y_test
 
         except Exception as e:
             raise AnomalyDetectionException(e, sys)
+
         
+    def initiate_data_processing(self) -> DataProcessingArtifact:
+        """
+        Main method to handle the entire data processing pipeline.
+        """
+        try:
+
+            df = self.read_validated_data()
+            df = self.handle_missing_and_invalid(df)
+            df = self.resampling_df_freqencies(df)
+            train_df, test_df = self.train_test_split_time_series(
+                df, 
+                self.data_processing_config.test_split_ratio
+            )
+            preprocessor = self.fit_and_save_preprocessing_pipeline(train_df)
+            X_train, y_train, X_test, y_test = self.transform_train_test(train_df, test_df)
+
     
 
-    def create_sliding_windows(data, window_size, step_size=1, target_index=None):
-        """
-        data: np.ndarray (2D) -> transformed dataset
-        window_size: int -> number of time steps per window
-        step_size: int -> how far to move the window each step
-        target_index: int or None -> column index for target variable (if supervised)
-        """
-        X, y = [], []
-        for i in range(0, len(data) - window_size + 1, step_size):
-            X.append(data[i:i + window_size, :])
-            if target_index is not None:
-                y.append(data[i + window_size - 1, target_index])
+            return DataProcessingArtifact(
+                X_train_path=self.data_processing_config.data_train_arr_dir,
+                y_train_path=self.data_processing_config.data_train_target_arr_dir,
+                X_test_path=self.data_processing_config.data_test_arr_dir,
+                y_test_path=self.data_processing_config.data_test_target_arr_dir,
+                preprocessor=self.data_processing_config.data_preprocessing_obj_path
+            )
 
-        X = np.array(X)
-        y = np.array(y) if target_index is not None else None
-        return X, y
-
-
-    
+        except Exception as e:
+            raise AnomalyDetectionException(e, sys)

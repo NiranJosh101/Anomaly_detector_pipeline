@@ -1,7 +1,9 @@
 import sys
 
 from src.components.data_ingestion import DataIngestion
-from src.config_entities.config_entity import DataIngestionConfig 
+from src.components.data_processing import DataProcessing
+from src.config_entities.config_entity import DataIngestionConfig, DataProcessingConfig
+from src.config_entities.artifact_entity import DataIngestionArtifact, DataProcessingArtifact
 from src.config_entities.config_entity import TrainPipelineConfig
 
 
@@ -20,9 +22,11 @@ if __name__ == "__main__":
         logger.logging.info("<<======Initiate the data ingestion=======>>")
         dataingestionartifact= data_ingestion.initiate_data_ingestion()
         logger.logging.info("<<======Data Ingestion Complete=======>>")
+
+
+       
     except Exception as e:
             raise AnomalyDetectionException(e, sys)
 
 
     
-        

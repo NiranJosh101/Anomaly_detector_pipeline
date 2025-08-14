@@ -56,6 +56,8 @@ class DataProcessingConfig:
         self.data_preprocessing_obj_path = os.path.join(self.data_processing_dir, trainingpipeline.DATA_PREPROCESSING_PIPELINE_OBJ_DIR, trainingpipeline.DATA_PREPROCESSING_PIPELINE_OBJ_NAME)
         self.data_train_arr_dir = os.path.join(self.data_processing_dir, trainingpipeline.DATA_PROCESSING_TRAIN_TEST_DIR_NAME,  trainingpipeline.DATA_PROCESSING_TRAIN_ARR)
         self.data_test_arr_dir = os.path.join(self.data_processing_dir, trainingpipeline.DATA_PROCESSING_TRAIN_TEST_DIR_NAME, trainingpipeline.DATA_PROCESSING_TEST_ARR)
+        self.data_train_target_arr_dir = os.path.join(self.data_processing_dir, trainingpipeline.DATA_PROCESSING_TRAIN_TEST_DIR_NAME, trainingpipeline.DATA_PROCESSING_TRAIN_TARGET_ARR)
+        self.data_test_target_arr_dir = os.path.join(self.data_processing_dir, trainingpipeline.DATA_PROCESSING_TRAIN_TEST_DIR_NAME, trainingpipeline.DATA_PROCESSING_TEST_TARGET_ARR)
         # self.transformed_train_path = os.path.join(self.data_train_test_dir, trainingpipeline.DATA_PROCESSING_TRAIN_ARR)
         # self.transformed_test_path = os.path.join(self.data_train_test_dir, trainingpipeline.DATA_PROCESSING_TEST_ARR)
         self.window_size = trainingpipeline.WINDOW_SIZE
