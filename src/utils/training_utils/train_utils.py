@@ -1,40 +1,34 @@
-from sklearn.base import BaseEstimator, TransformerMixin
 import numpy as np
 
-class WindowingTransformer(BaseEstimator, TransformerMixin):
-    def __init__(self, window_size, step_size, timestamp_index=None):
-        self.window_size = window_size
-        self.step_size = step_size
-        self.timestamp_index = timestamp_index  # Index/column for timestamp in X
+def window_data(X_arr: np.ndarray,
+                y_arr: np.ndarray,
+                window_size: int,
+                step_size: int,
+                timestamp_index: int):
+    """
+    Create sliding windows for time-series data (for reconstruction models).
+    
+    """
+    X_windows, y_windows, timestamps = [], [], []
 
-    def fit(self, X, y=None):
-        return self
+    num_samples = X_arr.shape[0]
 
-    def transform(self, X, y=None):
-        """
-        X: np.ndarray or DataFrame -> preprocessed features + timestamp column
-        Returns: X_windows, y_windows, timestamps
-        """
-        X_windows, y_windows, timestamps = [], [], []
+    for start in range(0, num_samples - window_size + 1, step_size):
+        end = start + window_size
 
-        # If X is a DataFrame, convert to numpy but keep timestamps separately
-        if hasattr(X, "iloc") and self.timestamp_index is not None:
-            timestamps_array = X.iloc[:, self.timestamp_index].values
-            X_numeric = X.drop(X.columns[self.timestamp_index], axis=1).values
-        else:
-            timestamps_array = X[:, self.timestamp_index] if self.timestamp_index is not None else None
-            X_numeric = np.delete(X, self.timestamp_index, axis=1) if self.timestamp_index is not None else X
+        
+        X_win_features = np.delete(X_arr[start:end], timestamp_index, axis=1)
+        y_win_features = np.delete(y_arr[start:end], timestamp_index, axis=1)
 
-        for i in range(0, len(X_numeric) - self.window_size + 1, self.step_size):
-            X_win = X_numeric[i:i + self.window_size, :]
-            X_windows.append(X_win)
-            y_windows.append(X_win)
+        
+        ts_value = X_arr[end - 1, timestamp_index]
 
-            if timestamps_array is not None:
-                timestamps.append(timestamps_array[i:i + self.window_size])
+        X_windows.append(X_win_features)
+        y_windows.append(y_win_features)
+        timestamps.append(ts_value)
 
-        return (
-            np.array(X_windows, dtype=np.float32),
-            np.array(y_windows, dtype=np.float32),
-            np.array(timestamps) if timestamps_array is not None else None
-        )
+    return (
+        np.array(X_windows),
+        np.array(y_windows),
+        np.array(timestamps)
+    )

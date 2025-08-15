@@ -1,0 +1,12 @@
+2025-08-14 14:21:26,821 - root - INFO - <<======Initiate the data ingestion=======>>
+2025-08-14 14:21:26,821 - root - INFO - Initiating Data Ingestion Pipeline...
+2025-08-14 14:21:26,821 - root - INFO - Starting data validation for uploaded file...
+2025-08-14 14:21:26,906 - root - INFO - Validated data copied to C:\Users\USER\Desktop\Anomaly_detector\data\Processed\valid_dataset\ValidatedData.csv\ValidatedData.csv
+2025-08-14 14:21:26,906 - root - INFO - Data Ingestion Artifact: DataIngestionArtifact(raw_data_file_path='C:\\Users\\USER\\Desktop\\Anomaly_detector\\data\\Processed\\valid_dataset\\ValidatedData.csv\\ValidatedData.csv')
+2025-08-14 14:21:26,907 - root - INFO - <<======Data Ingestion Complete=======>>
+2025-08-14 14:21:26,907 - root - INFO - <<======Initiate the data processing=======>>
+2025-08-14 14:21:26,915 - root - INFO - Validated data read from C:\Users\USER\Desktop\Anomaly_detector\data\Processed\valid_dataset\ValidatedData.csv\ValidatedData.csv
+2025-08-14 14:21:26,989 - root - INFO - Removed 26 duplicate rows based on timestamp.
+2025-08-14 14:21:26,991 - root - INFO - Missing, invalid values, and duplicates handled. Time column: Passengers
+2025-08-14 14:21:27,012 - root - INFO - Data is irregular. Resampling to frequency 'ns'
+2025-08-14 14:21:27,027 - root - INFO - Time-series split complete. Train size: 415, Test size: 104
