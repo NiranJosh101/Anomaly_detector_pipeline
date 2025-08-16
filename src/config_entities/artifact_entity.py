@@ -9,10 +9,8 @@ class DataIngestionArtifact:
 
 @dataclass
 class DataProcessingArtifact:
-    X_train_path: str
-    y_train_path: str
-    X_test_path: str
-    y_test_path: str
+    train_dataset_path: str
+    test_dataset_path: str
     preprocessor: str
 
     

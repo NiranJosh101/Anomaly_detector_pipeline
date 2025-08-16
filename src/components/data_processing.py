@@ -7,7 +7,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from sklearn.compose import ColumnTransformer
 
-
+from torch.utils.data import DataLoader
 
 
 from src.exception_setup.exception import AnomalyDetectionException
@@ -17,7 +17,7 @@ from src.config_entities.config_entity import DataProcessingConfig
 from src.config_entities.artifact_entity import DataIngestionArtifact, DataProcessingArtifact
 
 from src.utils.common import detect_timestamp_column,save_object,save_numpy_array_data,load_object,load_numpy_array_data
-from src.utils.training_utils.train_utils import window_data
+from src.utils.training_utils.train_utils import window_data, AnomalyDetectorWindowDataset
 
 
 
@@ -54,7 +54,7 @@ class DataProcessing:
         Returns cleaned DataFrame.
         """
         try:
-            # Detect timestamp column
+            
             time_col = detect_timestamp_column(df)
             if time_col is None:
                 raise ValueError(
@@ -112,16 +112,15 @@ class DataProcessing:
             df[time_col] = pd.to_datetime(df[time_col], errors="coerce")
             df = df.dropna(subset=[time_col]).sort_values(time_col).reset_index(drop=True)
 
-            # Try to infer frequency
+           
             inferred_freq = pd.infer_freq(df[time_col])
 
             if inferred_freq is None:
-                # If pandas can't infer, estimate it manually
                 deltas = df[time_col].diff().dropna().value_counts()
                 most_common_delta = deltas.index[0]
                 inferred_freq = pd.tseries.frequencies.to_offset(most_common_delta).freqstr
 
-            # Checking for irregularities
+            
             expected_range = pd.date_range(
                 start=df[time_col].min(),
                 end=df[time_col].max(),
@@ -190,7 +189,7 @@ class DataProcessing:
             The fitted preprocessing pipeline.
         """
         try:
-            # 1. Identify column types
+            
             numeric_cols = X_train.select_dtypes(include=["number"]).columns.tolist()
             categorical_cols = X_train.select_dtypes(include=["object", "category"]).columns.tolist()
             datetime_cols = X_train.select_dtypes(include=["datetime64[ns]"]).columns.tolist()
@@ -198,9 +197,9 @@ class DataProcessing:
             if not datetime_cols:
                 raise ValueError("No datetime column found in dataset.")
 
-            timestamp_col = datetime_cols[0]  # assume first datetime col is timestamp
+            timestamp_col = datetime_cols[0]  
 
-            # 2. Pipelines for numeric and categorical
+            
             num_pipeline = Pipeline([
                 ("scaler", StandardScaler())
             ])
@@ -209,19 +208,19 @@ class DataProcessing:
                 ("encoder", OneHotEncoder(handle_unknown="ignore", sparse_output=False))
             ])
 
-            # 3. ColumnTransformer: pass timestamps through without scaling/encoding
+            
             preprocessing = ColumnTransformer([
                 ("num", num_pipeline, numeric_cols),
                 ("cat", cat_pipeline, categorical_cols),
                 ("time", "passthrough", [timestamp_col])  # keep timestamps
             ], remainder="drop")
 
-            # 4. Fit on training data
+           
             preprocessing.fit(X_train)
 
-            # 5. Save fitted preprocessing object
+            
             save_object(
-                file_path=self.data_processing_config.preprocessing_object_path,
+                file_path=self.data_processing_config.data_processor_obj_path,
                 obj=preprocessing
             )
 
@@ -236,34 +235,34 @@ class DataProcessing:
             
     def transform_train_test(self, X_train, X_test):
         try:
-            pipeline_path = self.data_processing_config.data_preprocessing_obj_path
+            pipeline_path = self.data_processing_config.data_processor_obj_path
             preprocessor = load_object(pipeline_path)
 
-            # Transform datasets (outputs X only)
+           
             X_train_arr = preprocessor.transform(X_train)
             X_test_arr = preprocessor.transform(X_test)
 
-            # For reconstruction models: y is identical to X
+            
             y_train_arr = X_train_arr.copy()
             y_test_arr = X_test_arr.copy()
 
-            # Save transformed datasets
-            save_numpy_array_data(
-                file_path=self.data_processing_config.data_train_arr_dir,
-                array=X_train_arr
-            )
-            save_numpy_array_data(
-                file_path=self.data_processing_config.data_test_arr_dir,
-                array=X_test_arr
-            )
-            save_numpy_array_data(
-                file_path=self.data_processing_config.data_train_target_arr_dir,
-                array=y_train_arr
-            )
-            save_numpy_array_data(
-                file_path=self.data_processing_config.data_test_target_arr_dir,
-                array=y_test_arr
-            )
+           
+            # save_numpy_array_data(
+            #     file_path=self.data_processing_config.data_train_arr_dir,
+            #     array=X_train_arr
+            # )
+            # save_numpy_array_data(
+            #     file_path=self.data_processing_config.data_test_arr_dir,
+            #     array=X_test_arr
+            # )
+            # save_numpy_array_data(
+            #     file_path=self.data_processing_config.data_train_target_arr_dir,
+            #     array=y_train_arr
+            # )
+            # save_numpy_array_data(
+            #     file_path=self.data_processing_config.data_test_target_arr_dir,
+            #     array=y_test_arr
+            # )
 
             logger.logging.info("Train and test datasets transformed (X & y) and saved.")
             return X_train_arr, y_train_arr, X_test_arr, y_test_arr
@@ -282,7 +281,7 @@ class DataProcessing:
         with safe timestamp column detection and fallback.
         """
         try:
-            # Step 1: Try to auto-detect timestamp index
+           
             timestamp_index = None
             for col_idx in range(X_train_arr.shape[1]):
                 if not np.issubdtype(X_train_arr[:, col_idx].dtype, np.number):
@@ -290,7 +289,7 @@ class DataProcessing:
                     logger.logging.info(f"Auto-detected timestamp column at index {timestamp_index}")
                     break
             
-            # Step 2: Fallback to config if auto-detection fails
+            
             if timestamp_index is None:
                 if hasattr(self.data_processing_config, "timestamp_index"):
                     timestamp_index = self.data_processing_config.timestamp_index
@@ -302,7 +301,7 @@ class DataProcessing:
                         "No non-numeric column found for timestamp detection and no fallback index provided."
                     )
 
-            # Step 3: Apply windowing
+           
             X_train_win, y_train_win, ts_train = window_data(
                 X_train_arr, y_train_arr,
                 window_size=self.data_processing_config.window_size,
@@ -317,14 +316,14 @@ class DataProcessing:
                 timestamp_index=timestamp_index
             )
 
-            # Step 4: Save results
-            save_numpy_array_data(self.data_processing_config.windowed_X_train_path, X_train_win)
-            save_numpy_array_data(self.data_processing_config.windowed_y_train_path, y_train_win)
-            save_numpy_array_data(self.data_processing_config.windowed_ts_train_path, ts_train)
+            
+            save_numpy_array_data(self.data_processing_config.transformed_X_train_path, X_train_win)
+            save_numpy_array_data(self.data_processing_config.transformed_y_train_path, y_train_win)
+            save_numpy_array_data(self.data_processing_config.transformed_ts_train_path, ts_train)
 
-            save_numpy_array_data(self.data_processing_config.windowed_X_test_path, X_test_win)
-            save_numpy_array_data(self.data_processing_config.windowed_y_test_path, y_test_win)
-            save_numpy_array_data(self.data_processing_config.windowed_ts_test_path, ts_test)
+            save_numpy_array_data(self.data_processing_config.transformed_X_test_path, X_test_win)
+            save_numpy_array_data(self.data_processing_config.transformed_y_test_path, y_test_win)
+            save_numpy_array_data(self.data_processing_config.transformed_ts_test_path, ts_test)
 
             logger.logging.info("Windowing applied to train & test sets and saved successfully.")
 
@@ -332,35 +331,98 @@ class DataProcessing:
 
         except Exception as e:
             raise AnomalyDetectionException(e, sys)
+        
+    
+    def create_all_datasets(
+    self,
+    X_train_path: str, y_train_path: str, ts_train_path: str,
+    X_test_path: str, y_test_path: str, ts_test_path: str,
+    ):
+        """
+        Creates timestamp-aware PyTorch Dataset objects for train/test.
 
+        Returns:
+            tuple: (train_dataset, test_dataset)
+        """
+        train_dataset = AnomalyDetectorWindowDataset(
+            X_path=self.data_processing_config.transformed_X_train_path,
+            y_path=self.data_processing_config.transformed_y_train_path,
+            ts_path=self.data_processing_config.transformed_ts_train_path,
+            loader_fn=load_numpy_array_data
+        )
 
+        test_dataset = AnomalyDetectorWindowDataset(
+            X_path=self.data_processing_config.transformed_X_test_path,
+            y_path=self.data_processing_config.transformed_y_test_path,
+            ts_path=self.data_processing_config.transformed_ts_test_path,
+            loader_fn=load_numpy_array_data
+        )
 
         
+        save_object(self.data_processing_config.train_dataset_path, train_dataset)
+        save_object(self.data_processing_config.test_dataset_path, test_dataset)
+
+
+        return train_dataset, test_dataset
+    
+
+
+    # def create_all_dataloaders(
+    #     train_dataset,
+    #     test_dataset,
+    #     batch_size: int = 32,
+    #     shuffle_train: bool = True,
+    #     shuffle_test: bool = False,
+    #     num_workers: int = 0
+    # ):
+    #     train_loader = DataLoader(
+    #         train_dataset, batch_size=batch_size, shuffle=shuffle_train, num_workers=num_workers
+    #     )
+    #     test_loader = DataLoader(
+    #         test_dataset, batch_size=batch_size, shuffle=shuffle_test, num_workers=num_workers
+    #     )
+
+    #     save_object(os.path.join(output_dir, "train_loader.pkl"), list(train_loader))
+    #     save_object(os.path.join(output_dir, "test_loader.pkl"), list(test_loader))
+
+    #     return train_loader, test_loader
+
+
     def initiate_data_processing(self) -> DataProcessingArtifact:
         """
-        Main method to handle the entire data processing pipeline.
+        Main method to run the entire data processing pipeline.
         """
         try:
-
             df = self.read_validated_data()
             df = self.handle_missing_and_invalid(df)
             df = self.resampling_df_freqencies(df)
-            train_df, test_df = self.train_test_split_time_series(
-                df, 
-                self.data_processing_config.test_split_ratio
+            X_train, X_test = self.train_test_split_time_series(df, self.data_processing_config.test_split_ratio)
+            preprocessor = self.fit_and_save_preprocessing_pipeline(X_train)
+            X_train_arr, y_train_arr, X_test_arr, y_test_arr = self.transform_train_test(X_train, X_test)
+            X_train_win, y_train_win, ts_train, X_test_win, y_test_win, ts_test = self.apply_windowing_to_train_test(
+                X_train_arr, y_train_arr, X_test_arr, y_test_arr
             )
-            preprocessor = self.fit_and_save_preprocessing_pipeline(train_df)
-            X_train, y_train, X_test, y_test = self.transform_train_test(train_df, test_df)
-
-    
-
-            return DataProcessingArtifact(
-                X_train_path=self.data_processing_config.data_train_arr_dir,
-                y_train_path=self.data_processing_config.data_train_target_arr_dir,
-                X_test_path=self.data_processing_config.data_test_arr_dir,
-                y_test_path=self.data_processing_config.data_test_target_arr_dir,
-                preprocessor=self.data_processing_config.data_preprocessing_obj_path
+            # Create datasets
+            train_dataset, test_dataset = self.create_all_datasets(
+                X_train_path=self.data_processing_config.transformed_X_train_path,
+                y_train_path=self.data_processing_config.transformed_y_train_path,
+                ts_train_path=self.data_processing_config.transformed_ts_train_path,
+                X_test_path=self.data_processing_config.transformed_X_test_path,
+                y_test_path=self.data_processing_config.transformed_y_test_path,
+                ts_test_path=self.data_processing_config.transformed_ts_test_path
             )
+            # Store the artifact
+            data_processing_artifact = DataProcessingArtifact(
+                train_dataset_path=self.data_processing_config.train_dataset_path,
+                test_dataset_path=self.data_processing_config.test_dataset_path,
+                preprocessor=preprocessor
+            )
+
+            return data_processing_artifact
 
         except Exception as e:
             raise AnomalyDetectionException(e, sys)
+
+
+        
+   
