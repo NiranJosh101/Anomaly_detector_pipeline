@@ -1,6 +1,0 @@
-2025-08-07 19:24:09,256 - root - INFO - <<======Initiate the data ingestion=======>>
-2025-08-07 19:24:09,257 - root - INFO - Initiating Data Ingestion Pipeline...
-2025-08-07 19:24:09,257 - root - INFO - Starting data validation for uploaded file...
-2025-08-07 19:24:09,293 - root - INFO - Validated data copied to C:\Users\USER\Desktop\Anomaly_detector\data\Processed\valid_dataset\ValidatedData.csv\ValidatedData.csv
-2025-08-07 19:24:09,293 - root - INFO - Data Ingestion Artifact: DataIngestionArtifact(raw_data_file_path='C:\\Users\\USER\\Desktop\\Anomaly_detector\\data\\Processed\\valid_dataset\\ValidatedData.csv\\ValidatedData.csv')
-2025-08-07 19:24:09,294 - root - INFO - <<======Data Ingestion Complete=======>>

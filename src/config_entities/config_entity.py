@@ -55,6 +55,9 @@ class DataProcessingConfig:
         self.transformed_X_test_path = os.path.join(self.data_tramsform_dir, trainingpipeline.DATA_PROCESSING_X_TEST_TRANSFORM_NAME)
         self.transformed_y_test_path = os.path.join(self.data_tramsform_dir, trainingpipeline.DATA_PROCESSING_Y_TEST_TRANSFORM_NAME)
         self.transformed_ts_test_path = os.path.join(self.data_tramsform_dir, trainingpipeline.DATA_PROCESSING_TS_TEST_TRANSFORM_NAME)
+        self.timestamp_data_dir = os.path.join(self.data_processing_dir, trainingpipeline.DATA_PROCESSING_TIMESTAMP_DIR_NAME)
+        self.timestamp_train_data_path = os.path.join(self.timestamp_data_dir, trainingpipeline.DATA_PROCESSING_TRAIN_TIMESTAMP_NAME)
+        self.timestamp_test_data_path = os.path.join(self.timestamp_data_dir, trainingpipeline.DATA_PROCESSING_TEST_TIMESTAMP_NAME)
         self.window_size = trainingpipeline.WINDOW_SIZE
         self.window_step = trainingpipeline.WINDOW_STEP
         self.test_split_ratio = trainingpipeline.TEST_SPLIT_RATIO
